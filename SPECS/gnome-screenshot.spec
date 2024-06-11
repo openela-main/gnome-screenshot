@@ -2,7 +2,7 @@
 
 Name:           gnome-screenshot
 Version:        40.0
-Release:        4%{?dist}
+Release:        4%{?dist}.1
 Summary:        A screenshot utility for GNOME
 
 License:        GPLv2+
@@ -10,6 +10,8 @@ URL:            https://gitlab.gnome.org/GNOME/gnome-screenshot
 Source0:        https://download.gnome.org/sources/gnome-screenshot/40/gnome-screenshot-%{tarball_version}.tar.xz
 # https://bugzilla.redhat.com/show_bug.cgi?id=2078976
 Patch0:         gnome-screenshot-40.0-headless-fix.patch
+
+Patch1:         0001-app-Specify-empty-filename-to-let-GNOME-Shell-store-.patch
 
 BuildRequires:  gcc
 BuildRequires:  gettext
@@ -59,6 +61,9 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.gnome.Screenshot.
 
 
 %changelog
+* Thu Apr 18 2024 Carlos Garnacho <cgarnach@redhat.com> - 40.0-4.el9_4.1
+- Fix pasting into clipboard through CLI (RHEL-33864)
+
 * Wed Jul 13 2022 David King <amigadave@amigadave.com> - 40.0-4
 - Fix headless mode (#2078976)
 

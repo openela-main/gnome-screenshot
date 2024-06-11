@@ -1,0 +1,110 @@
+From ca1877d100e05ba1c04ae020c2543b6bd7c5e407 Mon Sep 17 00:00:00 2001
+From: Carlos Garnacho <carlosg@gnome.org>
+Date: Fri, 16 Feb 2024 17:55:21 +0100
+Subject: [PATCH] app: Specify empty filename to let GNOME Shell store in
+ clipboard
+
+---
+ src/screenshot-application.c   |  6 ++++++
+ src/screenshot-backend-shell.c | 15 ++++++++++-----
+ src/screenshot-backend.c       |  4 ++--
+ src/screenshot-utils.c         |  4 ++++
+ 4 files changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/src/screenshot-application.c b/src/screenshot-application.c
+index f7f5022..eb9cf59 100644
+--- a/src/screenshot-application.c
++++ b/src/screenshot-application.c
+@@ -486,6 +486,12 @@ finish_take_screenshot (ScreenshotApplication *self)
+   screenshot = screenshot_get_pixbuf (self->rectangle);
+   g_clear_pointer (&self->rectangle, g_free);
+ 
++  if (screenshot == NULL && screenshot_config->copy_to_clipboard)
++    {
++      g_application_release (G_APPLICATION (self));
++      return;
++    }
++
+   if (screenshot == NULL)
+     {
+       g_critical ("Unable to capture a screenshot of any window");
+diff --git a/src/screenshot-backend-shell.c b/src/screenshot-backend-shell.c
+index 84c5ead..b651311 100644
+--- a/src/screenshot-backend-shell.c
++++ b/src/screenshot-backend-shell.c
+@@ -38,8 +38,8 @@ G_DEFINE_TYPE_WITH_CODE (ScreenshotBackendShell, screenshot_backend_shell, G_TYP
+                          G_IMPLEMENT_INTERFACE (SCREENSHOT_TYPE_BACKEND, screenshot_backend_shell_backend_init))
+ 
+ static GdkPixbuf *
+-screenshot_backend_shell_get_pixbuf (ScreenshotBackend *backend,
+-                                     GdkRectangle      *rectangle)
++screenshot_backend_shell_get_pixbuf (ScreenshotBackend  *backend,
++                                     GdkRectangle       *rectangle)
+ {
+   g_autoptr(GError) error = NULL;
+   g_autofree gchar *path = NULL, *filename = NULL, *tmpname = NULL;
+@@ -51,8 +51,13 @@ screenshot_backend_shell_get_pixbuf (ScreenshotBackend *backend,
+   path = g_build_filename (g_get_user_cache_dir (), "gnome-screenshot", NULL);
+   g_mkdir_with_parents (path, 0700);
+ 
+-  tmpname = g_strdup_printf ("scr-%d.png", g_random_int ());
+-  filename = g_build_filename (path, tmpname, NULL);
++  if (!screenshot_config->copy_to_clipboard)
++    {
++      tmpname = g_strdup_printf ("scr-%d.png", g_random_int ());
++      filename = g_build_filename (path, tmpname, NULL);
++    }
++  else
++    filename = g_strdup ("");
+ 
+   if (screenshot_config->take_window_shot)
+     {
+@@ -94,7 +99,7 @@ screenshot_backend_shell_get_pixbuf (ScreenshotBackend *backend,
+                                NULL,
+                                &error);
+ 
+-  if (error == NULL)
++  if (error == NULL && *filename)
+     {
+       screenshot = gdk_pixbuf_new_from_file (filename, &error);
+ 
+diff --git a/src/screenshot-backend.c b/src/screenshot-backend.c
+index 73b4e5d..026bdcf 100644
+--- a/src/screenshot-backend.c
++++ b/src/screenshot-backend.c
+@@ -29,8 +29,8 @@ screenshot_backend_default_init (ScreenshotBackendInterface *iface)
+ }
+ 
+ GdkPixbuf *
+-screenshot_backend_get_pixbuf (ScreenshotBackend *self,
+-                               GdkRectangle      *rectangle)
++screenshot_backend_get_pixbuf (ScreenshotBackend  *self,
++                               GdkRectangle       *rectangle)
+ {
+   ScreenshotBackendInterface *iface;
+ 
+diff --git a/src/screenshot-utils.c b/src/screenshot-utils.c
+index df0b6e9..87929be 100644
+--- a/src/screenshot-utils.c
++++ b/src/screenshot-utils.c
+@@ -27,6 +27,7 @@
+ #include <glib/gi18n.h>
+ 
+ #include "screenshot-backend-shell.h"
++#include "screenshot-config.h"
+ 
+ #ifdef HAVE_X11
+ #include "screenshot-backend-x11.h"
+@@ -47,6 +48,9 @@ screenshot_get_pixbuf (GdkRectangle *rectangle)
+     {
+       backend = screenshot_backend_shell_new ();
+       screenshot = screenshot_backend_get_pixbuf (backend, rectangle);
++      if (!screenshot && screenshot_config->copy_to_clipboard)
++        return NULL;
++
+       if (!screenshot)
+ #ifdef HAVE_X11
+         g_message ("Unable to use GNOME Shell's builtin screenshot interface, "
+-- 
+2.44.0
+
