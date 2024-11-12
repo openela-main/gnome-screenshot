@@ -2,7 +2,7 @@
 
 Name:           gnome-screenshot
 Version:        40.0
-Release:        4%{?dist}.1
+Release:        5%{?dist}
 Summary:        A screenshot utility for GNOME
 
 License:        GPLv2+
@@ -61,8 +61,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.gnome.Screenshot.
 
 
 %changelog
-* Thu Apr 18 2024 Carlos Garnacho <cgarnach@redhat.com> - 40.0-4.el9_4.1
-- Fix pasting into clipboard through CLI (RHEL-33864)
+* Thu Apr 18 2024 Carlos Garnacho <cgarnach@redhat.com> - 40.0-5
+- Fix pasting into clipboard through CLI (RHEL-25179)
 
 * Wed Jul 13 2022 David King <amigadave@amigadave.com> - 40.0-4
 - Fix headless mode (#2078976)
