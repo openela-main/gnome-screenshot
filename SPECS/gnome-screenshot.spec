@@ -1,11 +1,14 @@
 Name:           gnome-screenshot
 Version:        3.26.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        A screenshot utility for GNOME
 
 License:        GPLv2+
 URL:            http://www.gnome.org
 Source0:        http://download.gnome.org/sources/gnome-screenshot/3.26/gnome-screenshot-%{version}.tar.xz
+
+# https://redhat.atlassian.net/browse/RHEL-156469
+Patch0:         gnome-screenshot-3.26.0-fix-fallbacks.patch
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  gettext
@@ -23,7 +26,7 @@ gnome-screenshot lets you take pictures of your screen.
 
 
 %prep
-%setup -q
+%autosetup -p1
 
 
 %build
@@ -52,6 +55,9 @@ desktop-file-validate $RPM_BUILD_ROOT%{_datadir}/applications/org.gnome.Screensh
 %{_mandir}/man1/gnome-screenshot.1*
 
 %changelog
+* Mon Apr 20 2026 David King <dking@redhat.com> - 3.26.0-4
+- Fix several fallback codepaths (RHEL-156469)
+
 * Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 3.26.0-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
 

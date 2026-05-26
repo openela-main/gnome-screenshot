@@ -1,0 +1,105 @@
+From 7379b724a89e8d0590e720ac3fff9ee26dfc2740 Mon Sep 17 00:00:00 2001
+From: David King <dking@redhat.com>
+Date: Mon, 20 Apr 2026 12:10:43 +0100
+Subject: [PATCH] Fix various fallback paths
+
+Adapted from https://gitlab.gnome.org/Archive/gnome-screenshot/-/merge_requests/72/
+---
+ src/screenshot-area-selection.c | 22 +++++++++++++++++++---
+ src/screenshot-utils.c          | 10 +++++++++-
+ 2 files changed, 28 insertions(+), 4 deletions(-)
+
+diff --git a/src/screenshot-area-selection.c b/src/screenshot-area-selection.c
+index 79a185a..ea254e6 100644
+--- a/src/screenshot-area-selection.c
++++ b/src/screenshot-area-selection.c
+@@ -24,6 +24,9 @@
+ 
+ #include "screenshot-area-selection.h"
+ 
++#ifdef HAVE_X11
++#include <gdk/gdkx.h>
++
+ typedef struct {
+   GdkRectangle  rect;
+   gboolean      button_pressed;
+@@ -200,6 +203,7 @@ create_select_window (void)
+   
+   return window;
+ }
++#endif
+ 
+ typedef struct {
+   GdkRectangle rectangle;
+@@ -223,6 +227,7 @@ emit_select_callback_in_idle (gpointer user_data)
+   return FALSE;
+ }
+ 
++#ifdef HAVE_X11
+ static void
+ screenshot_select_area_x11_async (CallbackData *cb_data)
+ {
+@@ -295,6 +300,7 @@ screenshot_select_area_x11_async (CallbackData *cb_data)
+    */
+   g_timeout_add (200, emit_select_callback_in_idle, cb_data);
+ }
++#endif
+ 
+ static void
+ select_area_done (GObject *source_object,
+@@ -316,11 +322,21 @@ select_area_done (GObject *source_object,
+           return;
+         }
+ 
+-      g_message ("Unable to select area using GNOME Shell's builtin screenshot "
+-                 "interface, resorting to fallback X11.");
++      g_warning ("Unable to use GNOME Shell's builtin screenshot interface: %s", error->message);
++#ifdef HAVE_X11
++      if (GDK_IS_X11_DISPLAY (gdk_display_get_default ()))
++        {
++          g_message ("Resorting to fallback X11.");
++          screenshot_select_area_x11_async (cb_data);
++          return;
++        }
++#endif
++
+       g_error_free (error);
+ 
+-      screenshot_select_area_x11_async (cb_data);
++      cb_data->aborted = TRUE;
++      g_idle_add (emit_select_callback_in_idle, cb_data);
++
+       return;
+     }
+ 
+diff --git a/src/screenshot-utils.c b/src/screenshot-utils.c
+index fb2166d..74263e8 100644
+--- a/src/screenshot-utils.c
++++ b/src/screenshot-utils.c
+@@ -37,6 +37,11 @@
+ #include "screenshot-config.h"
+ #include "screenshot-utils.h"
+ 
++
++#ifdef HAVE_X11
++#include <gdk/gdkx.h>
++#endif
++
+ static GdkWindow *
+ screenshot_find_active_window (void)
+ {
+@@ -658,7 +663,10 @@ screenshot_get_pixbuf (GdkRectangle *rectangle)
+                  "resorting to fallback X11.");
+       g_error_free (error);
+ 
+-      screenshot = screenshot_fallback_get_pixbuf (rectangle);
++      if (GDK_IS_X11_DISPLAY (gdk_display_get_default ()))
++	{
++          screenshot = screenshot_fallback_get_pixbuf (rectangle);
++        }
+     }
+ 
+   g_free (path);
+-- 
+2.53.0
+
